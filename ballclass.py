@@ -29,9 +29,14 @@ window.title("Player Moving Simulator 2017")
 c.pack()
 
 class Entity(object):
+        ## use position for bounding boxes, manual drawing
+        ## use drawposition for loading sprites in
         def __init__(self):
                 self.coords = {'x1': 0, 'y1': 0, 'x2': 0, 'y2': 0}
+                self.drawCoords = {'x1': 0, 'y1': 0}
                 self.sprite = PhotoImage()
+        def getSprite(self):
+                return self.sprite
         def setSprite(self, pic):
                 self.sprite = pic
         def getPosition(self):
@@ -41,6 +46,16 @@ class Entity(object):
                 self.coords['y1'] = y1
                 self.coords['x2'] = x2
                 self.coords['y2'] = y2
+        def setDrawPosition(self, x1, y1):
+                self.drawCoords['x1'] = x1
+                self.drawCoords['y1'] = y1
+        def setPositionUsingDraw(self):
+                self.coords['x1'] = self.drawCoords['x1']-self.sprite.width()/2
+                self.coords['x2'] = self.drawCoords['x1']+self.sprite.width()/2
+                self.coords['y1'] = self.drawCoords['y1']-self.sprite.height()/2
+                self.coords['y2'] = self.drawCoords['y1']+self.sprite.height()/2                
+        def getDrawPosition(self):
+                return self.drawCoords
 
 class Player(Entity):
         def __init__(self):
@@ -48,14 +63,23 @@ class Player(Entity):
                 super(Player, self).__init__()
                 self.spriteList = []
                 self.playerCount = 0
+
+                for i in range(0,12):
+                        formatting = "gif -index " + str(i)  
+                        self.spriteList.append(PhotoImage(file = './starship.gif', format=formatting))
+                self.setSprite(PhotoImage(file = './starship.gif', format="gif -index 0"))
         def movePlayer(self, event):
                 if (event.x > 0 and event.x+8 < 600):
                         self.sprite.width()
-                        self.coords['x1'] = event.x+5 # bulletPlayers are more centred
-                        self.coords['x2'] = event.x
+                        self.drawCoords['x1'] = event.x
+                        self.coords['x1'] = event.x-(self.sprite.width()/2)
+                        self.coords['x2'] = event.x+(self.sprite.width()/2)
+                        
                 if (event.y > 0 and event.y+8 < 600):
-                        self.coords['y1'] = event.y
-                        self.coords['y2'] = event.y
+                        self.drawCoords['y1'] = event.y
+                        self.coords['y1'] = event.y-(self.sprite.height()/2)
+                        self.coords['y2'] = event.y+(self.sprite.height()/2)
+                
         def identifyObject(self):
                 return("Player")
             
@@ -85,70 +109,62 @@ class Powerup(Entity):
                 return("powerup")
         def randomLocation(self):
                 x1 = random.randint(0,584)
-                x2 = x1+16
-                y1 = 0
-                y2 = 16
-                self.setPosition(x1, y1, x2, y2)
+                y1 = 16
+                self.setDrawPosition(x1, y1)
                 
 
 class Renderer(object):
         def __init__(self):
                 c.bind("<Button-1>", self.prepareBulletPlayer)
-        
+         
                 self.drawQueue = []
 
-                self.count = 0
-
+                self.count = 0 # animation for
                 self.backgroundCount = 0
-                self.heart = PhotoImage(file = './heart.png')
+                
+                #self.heart = PhotoImage(file = './heart.png')
                 self.backgrounds = []
                 self.backgrounds.append(Entity())
                 
                 self.Player = Player()
-                self.backgrounds[0].sprite = PhotoImage(file = './space.png')
-                self.backgrounds[0].setPosition(self.backgrounds[0].sprite.width()/2, 0, 0, 0)
+                self.backgrounds[0].setSprite(PhotoImage(file = './space.png'))
+                self.backgrounds[0].setDrawPosition(self.backgrounds[0].sprite.width()/2, 0)
 
-                for i in range(0,12):
-                        formatting = "gif -index " + str(i)  
-                        self.Player.spriteList.append(PhotoImage(file = './starship.gif', format=formatting))
-                self.Player.setSprite(PhotoImage(file = './starship.gif', format="gif -index 0"))
-                self.PlayerProp = self.Player.getPosition()
+                self.PlayerProp = self.Player.getDrawPosition()
 
                 self.enemy = Enemy()
-                self.enemy.setPosition(0,150,0,0);
+                self.enemy.setDrawPosition(0,150);
                 self.enemy.setSprite(PhotoImage(file = "./enemy.png"))
+                
                 self.drawQueue.append(self.enemy)
-                self.drawQueue.append(self.Player)
                 
                 self.gameLoop()
                 window.mainloop()
 
         def scrollBackground(self):
                 #BACKGROUND SIZE: 600x1446
-                position = self.backgrounds[self.backgroundCount].getPosition()
+                position = self.backgrounds[self.backgroundCount].getDrawPosition()
                 if (position['y1'] == 662):
                         print("woo")
                         self.backgrounds.append(Entity())
                         self.backgroundCount += 1
-                        self.backgrounds[self.backgroundCount].sprite = PhotoImage(file = './space.png')
-                        self.backgrounds[self.backgroundCount].setPosition(self.backgrounds[0].sprite.width()/2, -600)
+                        self.backgrounds[self.backgroundCount].setSprite(PhotoImage(file = './space.png'))
+                        self.backgrounds[self.backgroundCount].setDrawPosition(self.backgrounds[0].sprite.width()/2, -600)
                 if (position['y1'] == 1325):
                         self.backgroundCount -= 1
                         self.backgrounds[self.backgroundCount].pop()
                 
 
                 for i in self.backgrounds:
-                        position = i.getPosition()
-                        i.setPosition(position['x1'], position['y1']+1)
-                        c.create_image(position['x1'],position['y1']+1, image=i.sprite)
+                        position = i.getDrawPosition()
+                        i.setDrawPosition(position['x1'], position['y1']+1)
+                        c.create_image(position['x1'],position['y1']+1, image=i.getSprite())
                 
             
         def prepareBulletPlayer(self, event):
                 bulletPlayer = BulletPlayer()
-                averageY = (self.PlayerProp['y2']+self.PlayerProp['y1'])/2
-                averageX = (self.PlayerProp['x2']+self.PlayerProp['x1'])/2
-                print(averageY, averageX)
-                bulletPlayer.setPosition(averageX-1, averageY, averageX+2, averageY-10)
+                position = self.Player.getDrawPosition()
+                bulletPlayer.setPosition(position['x1'], position['y1'], position['x1']+2, position['y1']-10)
                 self.drawQueue.append(bulletPlayer)
 
         def prepareBulletEnemy(self, position):
@@ -157,12 +173,8 @@ class Renderer(object):
                 self.drawQueue.append(bulletEnemy)
 
         def detectCollision(self, Rect1, Rect2):
-                oldcoords1 = Rect1.getPosition()
-                oldcoords2 = Rect2.getPosition()
-                coords1 = {'x1': oldcoords1['x1']-(Rect2.sprite.width())/2, 'y1': oldcoords1['y1']-(Rect2.sprite.height())/2, 'x2': oldcoords1['x1']+(Rect2.sprite.width())/2, 'y2': oldcoords1['y1']+(Rect2.sprite.height())/2}
-                ## tkinter uses coords to send stuff to the middle - so we need to fix this
-                coords2 = {'x1': oldcoords2['x1']-(Rect2.sprite.width())/2, 'y1': oldcoords2['y1']-(Rect2.sprite.height())/2, 'x2': oldcoords2['x1']+(Rect2.sprite.width())/2, 'y2': oldcoords2['y1']+(Rect2.sprite.height())/2}
-
+                coords1 = Rect1.getPosition()
+                coords2 = Rect2.getPosition()
                 
                 return not(
 		(coords1['y2'] < coords2['y1']) or
@@ -179,42 +191,52 @@ class Renderer(object):
                         power = Powerup()
                         power.randomLocation()
                         self.drawQueue.append(power)
-                rand = 3
-                self.PlayerProp = self.Player.getPosition()                
+                rand = 3              
                 inum = 0
 
                 self.scrollBackground()
 
-                c.create_text(540, 26, text="LIVES", fill="white", font=('Bebas Neue Regular', 18))
-                c.create_text(50, 26, text="SCORE", fill="white", font=('Bebas Neue Regular', 18))
-                c.create_text(50, 53, text="0", fill="white", font=('Bebas Neue Regular', 18))
+                #c.create_text(540, 26, text="LIVES", fill="white", font=('Bebas Neue Regular', 18))
+                #c.create_text(50, 26, text="SCORE", fill="white", font=('Bebas Neue Regular', 18))
+                #c.create_text(50, 53, text="0", fill="white", font=('Bebas Neue Regular', 18))
                 
-                c.create_image(509, 53, image=self.heart)
-                c.create_image(509+30, 53, image=self.heart)
-                c.create_image(509+60, 53, image=self.heart)
+                #c.create_image(509, 53, image=self.heart)
+                #c.create_image(509+30, 53, image=self.heart)
+                #c.create_image(509+60, 53, image=self.heart)
 
                 for i in self.drawQueue: # ok, so this code basically moves everything up or down if need be
+                        drawPosition = i.getDrawPosition()
                         position = i.getPosition()
                         if (i.identifyObject() == "Player"):
                                 potato = 0
-                                c.create_image(self.PlayerProp['x1'], self.PlayerProp['y1'], image=self.Player.spriteList[self.Player.playerCount])
-                                inum += 1
-                        elif (i.identifyObject() == "enemy"):
-                                potato = self.count % 50;
-                                if (potato == 0):
-                                        self.prepareBulletEnemy(position)
-                                i.setPosition(position['x1']+1, position['y1'], 0,0)
-                                c.create_image(position['x1']+1, position['y1'], image=i.sprite)
-                                if position['x1'] >= 600:
-                                        self.drawQueue.pop(inum);
-                                inum += 1
-
+                                c.create_image(drawPosition['x1'], drawPosition['y1'], image=self.Player.spriteList[self.Player.playerCount])
+                                i.setPositionUsingDraw()
                                 object1 = i
                                 for j in self.drawQueue:
                                         object2 = j
                                         if (self.detectCollision(object1, object2)):
                                                 if (j is not i):
-                                                        print(j, "from", i)
+                                                        #print(j, "from", i)
+                                                        break
+                                inum += 1
+                        elif (i.identifyObject() == "enemy"):
+                                potato = self.count % 50;
+                                if (potato == 0):
+                                        self.prepareBulletEnemy(drawPosition)
+                                i.setDrawPosition(drawPosition['x1']+1, drawPosition['y1'])
+                                c.create_image(drawPosition['x1']+1, drawPosition['y1'], image=i.sprite)
+                                i.setPositionUsingDraw()
+                                object1 = i
+                                for j in self.drawQueue:
+                                        object2 = j
+                                        if (self.detectCollision(object1, object2)):
+                                                if (j is not i):
+                                                        if (j.identifyObject() is not "bulletEnemy"): # meh
+                                                                #print(j, "from", i)
+                                                                break
+                                if position['x1'] >= 600:
+                                        self.drawQueue.pop(inum);
+                                inum += 1
                                         
                         elif (i.identifyObject() == "bulletEnemy"):
                                 i.setPosition(position['x1'], position['y1']+10, position['x2'], position['y2']+10)
@@ -222,11 +244,6 @@ class Renderer(object):
                                 if position['y2'] >= 600:
                                         self.drawQueue.pop(inum);
                                 inum += 1
-                                for j in self.drawQueue:
-                                        object2 = j
-                                        if (self.detectCollision(object1, object2)):
-                                                if (j is not i):
-                                                        break
                                 
                         elif (i.identifyObject() == "bulletPlayer"):
                                 
@@ -235,23 +252,14 @@ class Renderer(object):
                                 if position['y2'] <= 0:
                                         self.drawQueue.pop(inum);
                                 inum += 1
-                                for j in self.drawQueue:
-                                        object2 = j
-                                        if (self.detectCollision(object1, object2)):
-                                                if (j is not i):
-                                                        break
                                                         
                         elif (i.identifyObject() == "powerup"):
-                                i.setPosition(position['x1'], position['y1']+5, position['x2'], position['y2']+5) 
-                                c.create_image(position['x1'], position['y1'], image=i.sprite)
-                                if position['y2'] >= 600:
+                                i.setDrawPosition(drawPosition['x1'], drawPosition['y1']+5) 
+                                c.create_image(drawPosition['x1'], drawPosition['y1'], image=i.sprite)
+                                i.setPositionUsingDraw()
+                                if drawPosition['y1'] >= 600:
                                         self.drawQueue.pop(inum);
                                 inum += 1
-                                for j in self.drawQueue:
-                                        object2 = j
-                                        if (self.detectCollision(object1, object2)):
-                                                if (j is not i):
-                                                        break
 
                 if (self.count != 100):
                         self.count += 1
