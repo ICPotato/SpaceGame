@@ -137,6 +137,7 @@ class Renderer(object):
                 self.enemy.setSprite(PhotoImage(file = "./enemy.png"))
                 
                 self.drawQueue.append(self.enemy)
+                self.drawQueue.append(self.Player)
                 
                 self.gameLoop()
                 window.mainloop()
